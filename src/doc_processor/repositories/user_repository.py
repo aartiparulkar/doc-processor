@@ -1,8 +1,10 @@
 import uuid
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from doc_processor.exceptions.user_email_conflict_error import UserEmailConflictError
 from doc_processor.models.user import User
 
 
@@ -34,7 +36,12 @@ class UserRepository:
         )
         
         self.session.add(user)
-        await self.session.commit()
+        try:
+            await self.session.commit()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise UserEmailConflictError() from exc
+        
         await self.session.refresh(user)
         
         return user
