@@ -1,2 +1,0 @@
-class UserEmailConflictError(Exception):
-    pass

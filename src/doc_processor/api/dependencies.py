@@ -1,6 +1,10 @@
 from typing import Annotated
 
 from fastapi import Depends
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from doc_processor.db.session import get_db_session

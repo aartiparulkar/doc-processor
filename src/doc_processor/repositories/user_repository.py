@@ -1,10 +1,14 @@
 import uuid
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from doc_processor.exceptions.user_email_conflict_error import UserEmailConflictError
+from doc_processor.exceptions.database import (
+    DatabaseError,
+    DatabaseIntegrityError,
+    DatabaseUnavailableError,
+)
 from doc_processor.models.user import User
 
 
@@ -35,13 +39,22 @@ class UserRepository:
             password_hash=password_hash
         )
         
-        self.session.add(user)
         try:
-            await self.session.commit()
+            self.session.add(user)
+            await self.session.flush()
+            await self.session.refresh(user)
+            return user
+            
         except IntegrityError as exc:
             await self.session.rollback()
-            raise UserEmailConflictError() from exc
+            raise DatabaseIntegrityError() from exc
         
-        await self.session.refresh(user)
+        except OperationalError as exc:
+            await self.session.rollback()
+            raise DatabaseUnavailableError() from exc
         
-        return user
+        except SQLAlchemyError as exc:
+            self.session.rollback()
+            
+            raise DatabaseError() from exc
+        
