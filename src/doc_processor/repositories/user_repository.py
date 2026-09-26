@@ -1,4 +1,4 @@
-import uuid
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
@@ -25,7 +25,7 @@ class UserRepository:
         return result.scalar_one_or_none()
     
     
-    async def get_by_id(self, id: uuid) -> User | None:
+    async def get_by_id(self, id: UUID) -> User | None:
         statement = select(User).where(User.id == id)
         
         result = await self.session.execute(statement)
