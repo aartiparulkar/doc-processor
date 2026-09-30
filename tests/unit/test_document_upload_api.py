@@ -1,6 +1,6 @@
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -49,7 +49,7 @@ def test_upload_valid_pdf(upload_client):
     client, mock_service, user_id = upload_client
 
     document_id = uuid.uuid4()
-    created_at = datetime.now(timezone.utc)
+    created_at = datetime.now(UTC)
     pdf_content = b"%PDF-1.4\nTest PDF content"
 
     # Simulate the document returned by the service.
