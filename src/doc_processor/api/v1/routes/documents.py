@@ -1,11 +1,9 @@
-import asyncio
 import uuid
 
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 
 from doc_processor.api.dependencies import CurrentUserDep, DocumentServiceDep
 from doc_processor.schemas.documents import DocumentResponse
-from doc_processor.storage.local import save_pdf
 
 router = APIRouter(prefix="/documents")
 
