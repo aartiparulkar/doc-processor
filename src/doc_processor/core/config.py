@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,6 +10,8 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 30
 
+    # Directory used to store uploaded PDF files.
+    upload_dir: Path = Path("uploads")
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -1,7 +1,8 @@
 from fastapi import APIRouter
 
-from doc_processor.api.v1.routes import auth, health
+from doc_processor.api.v1.routes import auth, documents, health
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(health.router, tags=["health"])
 api_router.include_router(auth.router, tags=["Authentication"])
+api_router.include_router(documents.router, tags=["Documents"])

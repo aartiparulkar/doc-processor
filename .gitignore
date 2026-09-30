@@ -19,3 +19,6 @@ htmlcov/
 # IDE
 .vscode/
 .idea/
+
+# Locally uploaded documents
+/uploads/
