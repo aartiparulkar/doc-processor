@@ -11,15 +11,20 @@ from doc_processor.services.document_service import DocumentService
 
 @pytest.mark.asyncio
 async def test_successful_upload(tmp_path):
-    repository = AsyncMock()
+    document_repository = AsyncMock()
+    processing_job_repository = AsyncMock()
     session = AsyncMock()
 
     saved_path = tmp_path / "document.pdf"
     saved_path.write_bytes(b"%PDF-1.4 test")
 
-    expected_document = repository.create.return_value
+    expected_document = document_repository.create.return_value
 
-    service = DocumentService(repository, session)
+    service = DocumentService(
+        document_repository=document_repository, 
+        processing_job_repository=processing_job_repository,
+        session=session
+    )
 
     with patch(
         "doc_processor.services.document_service.save_pdf",
@@ -33,31 +38,36 @@ async def test_successful_upload(tmp_path):
 
     # Storage and repository receive the same document ID.
     storage_id = mock_save.call_args.args[0]
-    repository_id = repository.create.call_args.kwargs[
+    repository_id = document_repository.create.call_args.kwargs[
         "document_id"
     ]
+    
 
     assert storage_id == repository_id
     assert result is expected_document
 
-    repository.create.assert_awaited_once()
+    document_repository.create.assert_awaited_once()
+    processing_job_repository.create.assert_awaited_once_with(
+        document_id=document_repository.create.call_args.kwargs["document_id"]
+    )
     session.commit.assert_awaited_once()
     session.rollback.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_database_failure_removes_pdf(tmp_path):
-    repository = AsyncMock()
+    document_repository = AsyncMock()
+    processing_job_repository = AsyncMock()
     session = AsyncMock()
 
-    repository.create.side_effect = RuntimeError(
+    document_repository.create.side_effect = RuntimeError(
         "Database insertion failed"
     )
 
     saved_path = tmp_path / "document.pdf"
     saved_path.write_bytes(b"%PDF-1.4 test")
 
-    service = DocumentService(repository, session)
+    service = DocumentService(document_repository, processing_job_repository, session)
 
     with patch(
         "doc_processor.services.document_service.save_pdf",
@@ -81,10 +91,11 @@ async def test_database_failure_removes_pdf(tmp_path):
 
 @pytest.mark.asyncio
 async def test_storage_failure_skips_database():
-    repository = AsyncMock()
+    document_repository = AsyncMock()
+    processing_job_repository = AsyncMock()
     session = AsyncMock()
 
-    service = DocumentService(repository, session)
+    service = DocumentService(document_repository, processing_job_repository, session)
 
     with patch(
         "doc_processor.services.document_service.save_pdf",
@@ -96,24 +107,25 @@ async def test_storage_failure_skips_database():
             content=b"%PDF-1.4 test",
         )
 
-    repository.create.assert_not_awaited()
+    document_repository.create.assert_not_awaited()
     session.commit.assert_not_awaited()
 
 
 
 @pytest.mark.asyncio
 async def test_database_error_cleans_up_pdf(tmp_path):
-    repository = AsyncMock()
+    document_repository = AsyncMock()
+    processing_job_repository = AsyncMock()
     session = AsyncMock()
 
-    repository.create.side_effect = SQLAlchemyError(
+    document_repository.create.side_effect = SQLAlchemyError(
         "Database insert failed"
     )
 
     saved_path = tmp_path / "document.pdf"
     saved_path.write_bytes(b"%PDF-1.4 test")
 
-    service = DocumentService(repository, session)
+    service = DocumentService(document_repository, processing_job_repository, session)
 
     with patch(
         "doc_processor.services.document_service.save_pdf",
@@ -132,10 +144,11 @@ async def test_database_error_cleans_up_pdf(tmp_path):
 
 @pytest.mark.asyncio
 async def test_rollback_failure_still_removes_pdf(tmp_path):
-    repository = AsyncMock()
+    document_repository = AsyncMock()
+    processing_job_repository = AsyncMock()
     session = AsyncMock()
 
-    repository.create.side_effect = SQLAlchemyError(
+    document_repository.create.side_effect = SQLAlchemyError(
         "Database insert failed"
     )
     session.rollback.side_effect = RuntimeError(
@@ -145,7 +158,7 @@ async def test_rollback_failure_still_removes_pdf(tmp_path):
     saved_path = tmp_path / "document.pdf"
     saved_path.write_bytes(b"%PDF-1.4 test")
 
-    service = DocumentService(repository, session)
+    service = DocumentService(document_repository, processing_job_repository, session)
 
     with patch(
         "doc_processor.services.document_service.save_pdf",
@@ -161,5 +174,40 @@ async def test_rollback_failure_still_removes_pdf(tmp_path):
     assert not saved_path.exists()
 
     
-    
+@pytest.mark.asyncio
+async def test_processing_job_failure_rolls_back_document(tmp_path):
+    document_repository = AsyncMock()
+    processing_job_repository = AsyncMock()
+    session = AsyncMock()
+
+    processing_job_repository.create.side_effect = RuntimeError(
+        "Job creation failed"
+    )
+
+    saved_path = tmp_path / "document.pdf"
+    saved_path.write_bytes(b"%PDF-1.4 test")
+
+    service = DocumentService(
+        document_repository=document_repository,
+        processing_job_repository=processing_job_repository,
+        session=session,
+    )
+
+    with patch(
+        "doc_processor.services.document_service.save_pdf",
+        return_value=saved_path,
+    ), pytest.raises(
+        RuntimeError,
+        match="Job creation failed",
+    ):
+        await service.upload_document(
+            user_id=uuid.uuid4(),
+            filename="report.pdf",
+            content=b"%PDF-1.4 test",
+        )
+
+    session.rollback.assert_awaited_once()
+    session.commit.assert_not_awaited()
+
+    assert not saved_path.exists()    
 

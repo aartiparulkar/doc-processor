@@ -36,6 +36,9 @@ class ProcessingJob(Base):
         Enum(
             ProcessingJobStatus,
             name="processing_job_status",
+            values_callable=lambda enum_class: [
+                member.value for member in enum_class
+            ],
         ),
         nullable=False,
         default=ProcessingJobStatus.QUEUED,
