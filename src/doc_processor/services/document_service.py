@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from doc_processor.exceptions.database import DatabaseError
 from doc_processor.models.documents import Document
 from doc_processor.repositories.document_repository import DocumentRepository
+from doc_processor.repositories.processing_job_repository import ProcessingJobRepository
 from doc_processor.storage.local import save_pdf
 
 logger = logging.getLogger(__name__)
@@ -17,9 +18,11 @@ class DocumentService:
     def __init__(
         self, 
         document_repository: DocumentRepository,
+        processing_job_repository: ProcessingJobRepository,
         session: AsyncSession,
     ) -> None:
         self.document_repository = document_repository
+        self.processing_job_repository = processing_job_repository
         self.session = session
         
     
@@ -66,6 +69,10 @@ class DocumentService:
                 document_id=document_id,
                 user_id=user_id,
                 filename=filename
+            )
+            
+            await self.processing_job_repository.create(
+                document_id=document_id,
             )
 
             await self.session.commit()
