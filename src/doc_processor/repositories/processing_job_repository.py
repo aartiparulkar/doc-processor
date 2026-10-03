@@ -29,6 +29,7 @@ class ProcessingJobRepository:
 
         return processing_job
 
+
     async def get_by_document_id(
         self,
         document_id: uuid.UUID,
@@ -40,3 +41,34 @@ class ProcessingJobRepository:
         result = await self.session.execute(statement)
 
         return result.scalar_one_or_none()
+    
+    
+    async def update_status(
+        self,
+        job: ProcessingJob,
+        status: ProcessingJobStatus,
+    ) -> ProcessingJob:
+        job.status = status
+
+        await self.session.flush()
+        await self.session.refresh(job)
+
+        return job
+    
+    async def claim_next_queued(self) -> ProcessingJob | None:
+        statement = (
+            select(ProcessingJob)
+            .where(ProcessingJob.status == ProcessingJobStatus.QUEUED)
+            .order_by(ProcessingJob.created_at, ProcessingJob.id)
+            .limit(1)
+            .with_for_update(skip_locked=True)
+        )
+
+        result = await self.session.execute(statement)
+        job = result.scalar_one_or_none()
+
+        if job is not None:
+            job.status = ProcessingJobStatus.PROCESSING
+            await self.session.flush()
+
+        return job

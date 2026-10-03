@@ -95,9 +95,21 @@ DocumentRepositoryDep = Annotated[
 ]
 
 
+def get_processing_job_repository(
+    session: DbSession,
+) -> ProcessingJobRepository:
+    return ProcessingJobRepository(session)
+
+
+ProcessingJobRepositoryDep = Annotated[
+    ProcessingJobRepository,
+    Depends(get_processing_job_repository),
+]
+
+
 def get_document_service(
     document_repository: DocumentRepositoryDep,
-    processing_job_repository: ProcessingJobRepository,
+    processing_job_repository: ProcessingJobRepositoryDep,
     session: DbSession
 ) -> DocumentService:
     return DocumentService(
@@ -110,16 +122,5 @@ def get_document_service(
 DocumentServiceDep = Annotated[
     DocumentService,
     Depends(get_document_service)
-]
-
-def get_processing_job_repository(
-    session: DbSession,
-) -> ProcessingJobRepository:
-    return ProcessingJobRepository(session)
-
-
-ProcessingJobRepositoryDep = Annotated[
-    ProcessingJobRepository,
-    Depends(get_processing_job_repository),
 ]
 

@@ -19,14 +19,26 @@ def save_pdf(
     # Never use the user-supplied filename as a storage path.
     file_path = upload_dir / f"{document_id}.pdf"
 
-    try:
-        # "xb" creates a new binary file and rejects duplicates.
-        with file_path.open("xb") as destination:
+    with file_path.open("xb") as destination:
+        try:
             destination.write(content)
 
-    except OSError:
+        except OSError:
         # Remove a partially written file if writing failed.
-        file_path.unlink(missing_ok=True)
-        raise
+            destination.close()
+            file_path.unlink(missing_ok=True)
+            raise
 
     return file_path
+
+
+def delete_pdf(document_id: uuid.UUID) -> None:
+    """Remove a stored PDF, if it is present."""
+    upload_dir = settings.upload_dir
+    filepath = upload_dir / f"{document_id}.pdf"
+
+    filepath.unlink(missing_ok=True)
+
+
+def get_pdf_path(document_id: uuid.UUID) -> Path:
+    return settings.upload_dir / f"{document_id}.pdf"
