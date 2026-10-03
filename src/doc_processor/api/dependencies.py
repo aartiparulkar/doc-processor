@@ -12,6 +12,9 @@ from doc_processor.db.session import get_db_session
 from doc_processor.exceptions.auth import UnauthorizedError
 from doc_processor.models.user import User
 from doc_processor.repositories.document_repository import DocumentRepository
+from doc_processor.repositories.processing_job_repository import (
+    ProcessingJobRepository,
+)
 from doc_processor.repositories.user_repository import UserRepository
 from doc_processor.services.auth_service import AuthService
 from doc_processor.services.document_service import DocumentService
@@ -92,12 +95,26 @@ DocumentRepositoryDep = Annotated[
 ]
 
 
+def get_processing_job_repository(
+    session: DbSession,
+) -> ProcessingJobRepository:
+    return ProcessingJobRepository(session)
+
+
+ProcessingJobRepositoryDep = Annotated[
+    ProcessingJobRepository,
+    Depends(get_processing_job_repository),
+]
+
+
 def get_document_service(
     document_repository: DocumentRepositoryDep,
+    processing_job_repository: ProcessingJobRepositoryDep,
     session: DbSession
 ) -> DocumentService:
     return DocumentService(
         document_repository=document_repository,
+        processing_job_repository=processing_job_repository,
         session=session,
     )
 
@@ -106,3 +123,4 @@ DocumentServiceDep = Annotated[
     DocumentService,
     Depends(get_document_service)
 ]
+

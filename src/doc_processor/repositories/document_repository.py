@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,4 +64,39 @@ class DocumentRepository:
         await self.session.flush()                          # Sends pendind INSERT to PostgreSQL
         await self.session.refresh(document)                # Retrives the document's DB values
         
+        return document
+
+    async def delete_by_id_for_user(
+        self,
+        document_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> Document | None:
+        document = await self.get_by_id_for_user(document_id, user_id)
+
+        if document is None:
+            return None
+
+        await self.session.delete(document)
+        await self.session.flush()
+
+        return document
+    
+    async def save_processing_result(
+        self,
+        document_id: uuid.UUID,
+        extracted_text: str,
+        page_count: int,
+    ) -> Document:
+        statement = select(Document).where(Document.id == document_id)
+        result = await self.session.execute(statement)
+        document = result.scalar_one_or_none()
+
+        if document is None:
+            raise LookupError(f"Document {document_id} does not exist")
+
+        document.extracted_text = extracted_text
+        document.page_count = page_count
+        document.processed_at = datetime.now(UTC)
+
+        await self.session.flush()
         return document
