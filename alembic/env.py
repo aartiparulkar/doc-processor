@@ -5,7 +5,7 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 from doc_processor.core.config import settings
 from doc_processor.db.base import Base
-from doc_processor.models import User
+from doc_processor.models import Document, User
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
